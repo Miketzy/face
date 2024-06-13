@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Face Emotion Recognition</title>
+    <link rel="stylesheet" href="D:\Face\css\style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    
+</head>
+<body>
+    <div class="container">
+        <h1>Face Emotion Recognition</h1>
+        <form id="upload-form" enctype="multipart/form-data">
+            <label for="imageUpload" class="custom-file-upload">
+                <i class="fas fa-cloud-upload-alt"></i> Choose Image
+            </label>
+            <input type="file" id="imageUpload" name="file" accept="image/*">
+            <button type="submit" id="detectEmotion">Detect Emotion</button>
+        </form>
+        <canvas id="canvas"></canvas>
+        <div id="emotionResult"></div>
+    </div>
+    <script>
+        document.getElementById('imageUpload').addEventListener('change', () => {
+            const fileInput = document.getElementById('imageUpload');
+            const canvas = document.getElementById('canvas');
+            const context = canvas.getContext('2d');
+            const img = new Image();
+
+            img.onload = () => {
+                console.log('Image loaded:', img.width, img.height);
+                canvas.width = img.width;
+                canvas.height = img.height;
+                context.drawImage(img, 0, 0);
+            };
+
+            img.onerror = (err) => {
+                console.error('Error loading image:', err);
+            };
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                console.log('FileReader loaded:', e.target.result);
+                img.src = e.target.result;
+            };
+            reader.onerror = (err) => {
+                console.error('FileReader error:', err);
+            };
+            reader.readAsDataURL(fileInput.files[0]);
+        });
+
+        document.getElementById('upload-form').addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const fileInput = document.getElementById('imageUpload');
+            if (fileInput.files.length === 0) {
+                alert('Please select an image file.');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+
+            try {
+                const response = await fetch('http://localhost:5001/upload', { // Update the URL here
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+
+                const results = await response.json();
+                console.log('Results from server:', results);
+                displayResults(results);
+            } catch (error) {
+                console.error('There was a problem with the fetch operation:', error);
+            }
+        });
+
+        function displayResults(results) {
+            const canvas = document.getElementById('canvas');
+            const context = canvas.getContext('2d');
+            const img = new Image();
+
+            img.onload = () => {
+                console.log('Image loaded:', img.width, img.height);
+                canvas.width = img.width;
+                canvas.height = img.height;
+                context.drawImage(img, 0, 0);
+                results.forEach(result => {
+                    context.strokeStyle = 'blue';
+                    context.lineWidth = 2;
+                    context.strokeRect(result.box[0], result.box[1], result.box[2], result.box[3]);
+                });
+                displayEmotionResults(results);
+            };
+
+            img.onerror = (err) => {
+                console.error('Error loading image:', err);
+            };
+
+            const fileInput = document.getElementById('imageUpload');
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                console.log('FileReader loaded:', e.target.result);
+                img.src = e.target.result;
+            };
+            reader.onerror = (err) => {
+                console.error('FileReader error:', err);
+            };
+            reader.readAsDataURL(fileInput.files[0]);
+        }
+
+        function displayEmotionResults(results) {
+            const emotionResultDiv = document.getElementById('emotionResult');
+            emotionResultDiv.innerHTML = ''; // Clear previous results
+
+            results.forEach(result => {
+                const resultDiv = document.createElement('div');
+                resultDiv.style.marginBottom = '10px';
+                resultDiv.innerHTML = `<strong>Emotion:</strong> ${result.label} <br> <strong>Confidence:</strong> ${(result.confidence * 100).toFixed(2)}%`;
+                emotionResultDiv.appendChild(resultDiv);
+            });
+        }
+    </script>
+</body>
+</html>
